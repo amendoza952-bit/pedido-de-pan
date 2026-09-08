@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Panadería Irma</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  :root{
+    --paper:#EFE6D3;
+    --card:#FBF6EA;
+    --ink:#3B2A1D;
+    --ink-soft:#7A6A54;
+    --crust:#6B4226;
+    --accent:#9C3B2E;
+    --accent-dark:#7C2E22;
+    --wheat:#C4903B;
+    --line:#D9CBB0;
+    --ok:#4B6B3A;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    background-image:
+      radial-gradient(circle at 1px 1px, rgba(59,42,29,0.06) 1px, transparent 0);
+    background-size:18px 18px;
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    padding:28px 14px 60px;
+  }
+  .ticket{
+    width:100%;
+    max-width:460px;
+  }
+  header{
+    text-align:left;
+    margin-bottom:22px;
+  }
+  header h1{
+    font-family:'Bitter',serif;
+    font-weight:700;
+    font-size:2rem;
+    margin:0 0 6px;
+    color:var(--crust);
+    letter-spacing:-0.01em;
+  }
+  header p{
+    margin:0;
+    color:var(--ink-soft);
+    font-size:0.95rem;
+    max-width:34ch;
+  }
+  .card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:18px;
+    margin-bottom:16px;
+  }
+  .card h2{
+    font-family:'Bitter',serif;
+    font-size:1.05rem;
+    font-weight:600;
+    margin:0 0 12px;
+    color:var(--crust);
+  }
+  .product-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:10px 0;
+    border-bottom:1px solid var(--line);
+  }
+  .product-row:last-child{border-bottom:none;}
+  .product-info{
+    display:flex;
+    flex-direction:column;
+    gap:2px;
+  }
+  .product-name{
+    font-family:'Bitter',serif;
+    font-size:1rem;
+    font-weight:600;
+  }
+  .product-price{
+    font-size:0.85rem;
+    color:var(--ink-soft);
+  }
+  .stepper{
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .stepper button{
+    width:30px;
+    height:30px;
+    border-radius:7px;
+    border:1px solid var(--line);
+    background:var(--paper);
+    color:var(--crust);
+    font-size:1.05rem;
+    font-family:'Inter',sans-serif;
+    cursor:pointer;
+    line-height:1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    transition:background 0.15s ease, transform 0.1s ease;
+  }
+  .stepper button:active{transform:scale(0.92);}
+  .stepper button.plus{
+    background:var(--wheat);
+    border-color:var(--wheat);
+    color:#fff;
+  }
+  .stepper span{
+    min-width:18px;
+    text-align:center;
+    font-variant-numeric:tabular-nums;
+    font-weight:600;
+  }
+  .field{margin-bottom:14px;}
+  .field label{
+    display:block;
+    font-size:0.88rem;
+    color:var(--ink-soft);
+    margin-bottom:6px;
+  }
+  .field input, .field textarea{
+    width:100%;
+    padding:11px 12px;
+    border-radius:8px;
+    border:1px solid var(--line);
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    font-size:0.98rem;
+  }
+  .field textarea{resize:vertical; min-height:56px;}
+  .field input:focus, .field textarea:focus{
+    outline:2px solid var(--wheat);
+    outline-offset:1px;
+  }
+  .receipt{
+    border-top:2px dashed var(--line);
+    margin-top:4px;
+    padding-top:12px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:0.88rem;
+  }
+  .receipt-empty{color:var(--ink-soft); font-style:italic;}
+  .receipt-line{
+    display:flex;
+    align-items:baseline;
+    gap:6px;
+    margin-bottom:6px;
+  }
+  .receipt-line .item{white-space:nowrap;}
+  .receipt-line .dots{
+    flex:1;
+    border-bottom:1px dotted var(--ink-soft);
+    height:1px;
+    margin-bottom:3px;
+  }
+  .receipt-line .qty{white-space:nowrap; font-weight:600;}
+  .receipt-total{
+    display:flex;
+    justify-content:space-between;
+    margin-top:10px;
+    padding-top:10px;
+    border-top:1px solid var(--line);
+    font-weight:700;
+    font-size:0.95rem;
+  }
+  .send-btn{
+    width:100%;
+    padding:14px;
+    border:none;
+    border-radius:9px;
+    background:var(--accent);
+    color:#fff;
+    font-family:'Inter',sans-serif;
+    font-weight:600;
+    font-size:1rem;
+    cursor:pointer;
+    transition:background 0.15s ease;
+  }
+  .send-btn:hover{background:var(--accent-dark);}
+  .send-btn:disabled{background:var(--ink-soft); cursor:not-allowed;}
+  .status{
+    margin-top:10px;
+    font-size:0.88rem;
+    min-height:1.2em;
+  }
+  .status.ok{color:var(--ok);}
+  .status.err{color:var(--accent);}
+  .fallback{
+    display:inline-block;
+    margin-top:10px;
+    font-size:0.85rem;
+    color:var(--crust);
+    text-decoration:underline;
+  }
+  .admin-toggle{
+    display:block;
+    text-align:center;
+    font-size:0.82rem;
+    color:var(--ink-soft);
+    text-decoration:underline;
+    background:none;
+    border:none;
+    cursor:pointer;
+    margin:4px auto 0;
+    padding:6px;
+    font-family:'Inter',sans-serif;
+  }
+  .admin-card{display:none;}
+  .admin-card h2{font-size:0.95rem;}
+  .pin-row{display:flex; gap:8px;}
+  .pin-row input{flex:1;}
+  .pin-row button{
+    padding:0 16px;
+    border-radius:8px;
+    border:none;
+    background:var(--crust);
+    color:#fff;
+    font-family:'Inter',sans-serif;
+    font-weight:500;
+    cursor:pointer;
+  }
+  .admin-error{color:var(--accent); font-size:0.85rem; margin-top:6px; min-height:1.1em;}
+  .admin-item-row{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    padding:8px 0;
+    border-bottom:1px solid var(--line);
+    font-size:0.92rem;
+  }
+  .admin-item-row:last-child{border-bottom:none;}
+  .admin-item-name{flex:1;}
+  .admin-price-input{
+    width:66px;
+    padding:6px 8px;
+    border-radius:6px;
+    border:1px solid var(--line);
+    background:var(--paper);
+    font-family:'Inter',sans-serif;
+    text-align:right;
+  }
+  .admin-remove{
+    background:none;
+    border:1px solid var(--line);
+    color:var(--accent);
+    width:26px;
+    height:26px;
+    border-radius:7px;
+    cursor:pointer;
+    line-height:1;
+    flex-shrink:0;
+  }
+  .admin-add-row{
+    display:flex;
+    gap:8px;
+    margin-top:12px;
+  }
+  .admin-add-row input[type="text"]{
+    flex:1;
+    padding:9px 10px;
+    border-radius:8px;
+    border:1px solid var(--line);
+    background:var(--paper);
+    font-family:'Inter',sans-serif;
+  }
+  .admin-add-row input[type="number"]{
+    width:70px;
+    padding:9px 8px;
+    border-radius:8px;
+    border:1px solid var(--line);
+    background:var(--paper);
+    font-family:'Inter',sans-serif;
+    text-align:right;
+  }
+  .admin-add-row button{
+    padding:0 14px;
+    border-radius:8px;
+    border:none;
+    background:var(--wheat);
+    color:#fff;
+    font-weight:500;
+    cursor:pointer;
+  }
+  .admin-note{font-size:0.8rem; color:var(--ink-soft); margin-top:10px;}
+  .admin-subsection{
+    margin-top:18px;
+    padding-top:16px;
+    border-top:1px solid var(--line);
+  }
+  .admin-subsection h3{
+    font-family:'Bitter',serif;
+    font-size:0.92rem;
+    font-weight:600;
+    color:var(--crust);
+    margin:0 0 10px;
+  }
+  .admin-subsection .field{margin-bottom:8px;}
+  .admin-subsection input{
+    width:100%;
+    padding:9px 10px;
+    border-radius:8px;
+    border:1px solid var(--line);
+    background:var(--paper);
+    font-family:'Inter',sans-serif;
+    margin-bottom:8px;
+  }
+  .admin-subsection button{
+    padding:9px 14px;
+    border-radius:8px;
+    border:none;
+    background:var(--crust);
+    color:#fff;
+    font-weight:500;
+    cursor:pointer;
+  }
+  .qr-box{
+    background:#fff;
+    display:inline-block;
+    padding:12px;
+    border-radius:10px;
+    border:1px solid var(--line);
+  }
+  .qr-wrap{text-align:center;}
+</style>
+</head>
+<body>
+
+<div class="ticket">
+  <header>
+    <h1>Panadería Irma</h1>
+    <p>Elige lo que llevas y quién lo recibe. Se manda directo por WhatsApp.</p>
+  </header>
+
+  <div class="card">
+    <h2>Productos</h2>
+    <div id="productList"></div>
+  </div>
+
+  <div class="card">
+    <h2>Tu pedido</h2>
+    <div class="receipt" id="receipt">
+      <div class="receipt-empty">Aún no has agregado nada</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="field">
+      <label for="clientName">Nombre de quien recibe</label>
+      <input type="text" id="clientName" placeholder="Ej. Juan Pérez">
+    </div>
+    <div class="field">
+      <label for="notes">Notas (opcional)</label>
+      <textarea id="notes" placeholder="Ej. entregar después de las 6pm"></textarea>
+    </div>
+    <button class="send-btn" id="sendBtn">Enviar pedido por WhatsApp</button>
+    <div class="status" id="status"></div>
+    <a class="fallback" id="fallbackLink" href="#" target="_blank" style="display:none;">Si no llegó, ábrelo manualmente aquí</a>
+  </div>
+
+  <button class="admin-toggle" id="adminToggle">Administrar menú</button>
+
+  <div class="card admin-card" id="pinCard">
+    <h2>Acceso de administrador</h2>
+    <div class="pin-row">
+      <input type="password" id="pinInput" placeholder="Contraseña">
+      <button id="pinSubmit">Entrar</button>
+    </div>
+    <div class="admin-error" id="pinError"></div>
+  </div>
+
+  <div class="card admin-card" id="adminPanel">
+    <h2>Editar menú</h2>
+    <div id="adminList"></div>
+    <div class="admin-add-row">
+      <input type="text" id="newProductName" placeholder="Nuevo producto">
+      <input type="number" id="newProductPrice" placeholder="Precio" min="0" step="0.5">
+      <button id="addProductBtn">Agregar</button>
+    </div>
+    <p class="admin-note">Los cambios se guardan solos y los verá cualquiera que abra esta página.</p>
+
+    <div class="admin-subsection">
+      <h3>Cambiar contraseña</h3>
+      <input type="password" id="currentPass" placeholder="Contraseña actual">
+      <input type="password" id="newPass" placeholder="Nueva contraseña">
+      <input type="password" id="newPass2" placeholder="Confirmar nueva contraseña">
+      <button id="changePassBtn">Guardar nueva contraseña</button>
+      <div class="admin-error" id="changePassMsg"></div>
+    </div>
+
+    <div class="admin-subsection qr-wrap">
+      <h3>Código QR de esta página</h3>
+      <div class="qr-box" id="qrContainer"></div>
+      <p class="admin-note">Escanéalo para abrir el pedido desde otro celular.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ---- Config: mensajería por CallMeBot ----
+  // Ver instrucciones para obtener el APIKEY al final de este archivo (comentario).
+  const CALLMEBOT_PHONE = "6144274449";
+  const CALLMEBOT_APIKEY = "PON_AQUI_TU_APIKEY";
+
+  // ---- Config: acceso de administrador ----
+  const ADMIN_PASS_KEY = "admin:password";
+  let ADMIN_PASSWORD = "1234"; // valor de respaldo hasta que cargue el guardado
+
+  async function loadAdminPassword(){
+    try{
+      const result = await window.storage.get(ADMIN_PASS_KEY, true);
+      ADMIN_PASSWORD = result.value;
+    }catch(err){
+      ADMIN_PASSWORD = "1234";
+      await window.storage.set(ADMIN_PASS_KEY, ADMIN_PASSWORD, true);
+    }
+  }
+
+  const DEFAULT_PRODUCTS = [
+    { id: "concha", name: "Concha", price: 12 },
+    { id: "bolillo", name: "Bolillo", price: 6 },
+    { id: "cuernito", name: "Cuernito", price: 10 },
+    { id: "dona", name: "Dona glaseada", price: 15 },
+    { id: "oreja", name: "Oreja", price: 12 },
+    { id: "empanada", name: "Empanada de manzana", price: 15 },
+    { id: "polvoron", name: "Polvorón", price: 8 },
+    { id: "mantecada", name: "Mantecada", price: 10 }
+  ];
+
+  let PRODUCTS = [];
+  let qty = {};
+  const MENU_KEY = "menu:productos";
+
+  async function loadProducts(){
+    try{
+      const result = await window.storage.get(MENU_KEY, true);
+      PRODUCTS = JSON.parse(result.value);
+    }catch(err){
+      PRODUCTS = DEFAULT_PRODUCTS.slice();
+      await saveProducts();
+    }
+    syncQty();
+  }
+
+  async function saveProducts(){
+    try{
+      await window.storage.set(MENU_KEY, JSON.stringify(PRODUCTS), true);
+    }catch(err){
+      console.error('No se pudo guardar el menú', err);
+    }
+  }
+
+  function syncQty(){
+    const next = {};
+    PRODUCTS.forEach(p => next[p.id] = qty[p.id] || 0);
+    qty = next;
+  }
+
+  function formatPrice(n){
+    const num = Number(n) || 0;
+    return `$${num.toFixed(2)}`;
+  }
+
+  const productList = document.getElementById('productList');
+  const receipt = document.getElementById('receipt');
+  const sendBtn = document.getElementById('sendBtn');
+  const statusEl = document.getElementById('status');
+  const fallbackLink = document.getElementById('fallbackLink');
+
+  function renderProducts(){
+    productList.innerHTML = PRODUCTS.map(p => `
+      <div class="product-row">
+        <div class="product-info">
+          <span class="product-name">${p.name}</span>
+          <span class="product-price">${formatPrice(p.price)}</span>
+        </div>
+        <div class="stepper">
+          <button data-id="${p.id}" data-dir="-1" aria-label="Quitar ${p.name}">−</button>
+          <span id="qty-${p.id}">${qty[p.id]}</span>
+          <button class="plus" data-id="${p.id}" data-dir="1" aria-label="Agregar ${p.name}">+</button>
+        </div>
+      </div>
+    `).join('');
+
+    productList.querySelectorAll('button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.id;
+        const dir = parseInt(btn.dataset.dir);
+        qty[id] = Math.max(0, qty[id] + dir);
+        document.getElementById(`qty-${id}`).textContent = qty[id];
+        renderReceipt();
+      });
+    });
+  }
+
+  function renderReceipt(){
+    const chosen = PRODUCTS.filter(p => qty[p.id] > 0);
+    if(chosen.length === 0){
+      receipt.innerHTML = '<div class="receipt-empty">Aún no has agregado nada</div>';
+      return;
+    }
+    let total = 0;
+    const lines = chosen.map(p => {
+      const subtotal = (Number(p.price) || 0) * qty[p.id];
+      total += subtotal;
+      return `
+        <div class="receipt-line">
+          <span class="item">${p.name}</span>
+          <span class="dots"></span>
+          <span class="qty">${qty[p.id]}x ${formatPrice(subtotal)}</span>
+        </div>
+      `;
+    }).join('');
+    receipt.innerHTML = lines + `
+      <div class="receipt-total">
+        <span>Total</span>
+        <span>${formatPrice(total)}</span>
+      </div>
+    `;
+  }
+
+  function buildMessage(){
+    const name = document.getElementById('clientName').value.trim();
+    const notes = document.getElementById('notes').value.trim();
+    const chosen = PRODUCTS.filter(p => qty[p.id] > 0);
+    let total = 0;
+    let msg = "🥖 Nuevo pedido de pan\n";
+    msg += `Cliente: ${name}\n\n`;
+    chosen.forEach(p => {
+      const subtotal = (Number(p.price) || 0) * qty[p.id];
+      total += subtotal;
+      msg += `- ${qty[p.id]}x ${p.name} (${formatPrice(subtotal)})\n`;
+    });
+    msg += `\nTotal: ${formatPrice(total)}`;
+    if(notes) msg += `\nNotas: ${notes}`;
+    return msg;
+  }
+
+  function resetForm(){
+    PRODUCTS.forEach(p => qty[p.id] = 0);
+    renderProducts();
+    renderReceipt();
+    document.getElementById('clientName').value = "";
+    document.getElementById('notes').value = "";
+  }
+
+  // ---- Panel de administrador ----
+  const adminToggle = document.getElementById('adminToggle');
+  const pinCard = document.getElementById('pinCard');
+  const adminPanel = document.getElementById('adminPanel');
+  const pinInput = document.getElementById('pinInput');
+  const pinSubmit = document.getElementById('pinSubmit');
+  const pinError = document.getElementById('pinError');
+  const adminList = document.getElementById('adminList');
+  const newProductName = document.getElementById('newProductName');
+  const newProductPrice = document.getElementById('newProductPrice');
+  const addProductBtn = document.getElementById('addProductBtn');
+
+  let isAdmin = false;
+  let panelOpen = false;
+
+  function updateAdminVisibility(){
+    if(!panelOpen){
+      pinCard.style.display = 'none';
+      adminPanel.style.display = 'none';
+      return;
+    }
+    pinCard.style.display = isAdmin ? 'none' : 'block';
+    adminPanel.style.display = isAdmin ? 'block' : 'none';
+  }
+
+  adminToggle.addEventListener('click', () => {
+    panelOpen = !panelOpen;
+    pinInput.value = "";
+    pinError.textContent = "";
+    updateAdminVisibility();
+  });
+
+  pinSubmit.addEventListener('click', () => {
+    if(pinInput.value === ADMIN_PASSWORD){
+      isAdmin = true;
+      pinError.textContent = "";
+      renderAdminList();
+      renderQR();
+      updateAdminVisibility();
+    }else{
+      pinError.textContent = "Contraseña incorrecta.";
+    }
+  });
+
+  pinInput.addEventListener('keydown', (e) => {
+    if(e.key === 'Enter') pinSubmit.click();
+  });
+
+  function renderAdminList(){
+    if(PRODUCTS.length === 0){
+      adminList.innerHTML = '<div class="admin-error" style="color:var(--ink-soft);">El menú está vacío.</div>';
+      return;
+    }
+    adminList.innerHTML = PRODUCTS.map(p => `
+      <div class="admin-item-row">
+        <span class="admin-item-name">${p.name}</span>
+        <input type="number" class="admin-price-input" data-id="${p.id}" value="${Number(p.price) || 0}" min="0" step="0.5" aria-label="Precio de ${p.name}">
+        <button class="admin-remove" data-id="${p.id}" aria-label="Quitar ${p.name} del menú">×</button>
+      </div>
+    `).join('');
+
+    adminList.querySelectorAll('.admin-price-input').forEach(input => {
+      input.addEventListener('change', async () => {
+        const id = input.dataset.id;
+        const val = parseFloat(input.value);
+        const product = PRODUCTS.find(p => p.id === id);
+        if(product){
+          product.price = (isNaN(val) || val < 0) ? 0 : val;
+          input.value = product.price;
+          await saveProducts();
+          renderProducts();
+          renderReceipt();
+        }
+      });
+    });
+
+    adminList.querySelectorAll('.admin-remove').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.id;
+        PRODUCTS = PRODUCTS.filter(p => p.id !== id);
+        delete qty[id];
+        await saveProducts();
+        renderProducts();
+        renderReceipt();
+        renderAdminList();
+      });
+    });
+  }
+
+  addProductBtn.addEventListener('click', async () => {
+    const name = newProductName.value.trim();
+    if(!name) return;
+    const priceVal = parseFloat(newProductPrice.value);
+    const price = (isNaN(priceVal) || priceVal < 0) ? 0 : priceVal;
+    const id = 'p_' + Date.now();
+    PRODUCTS.push({ id, name, price });
+    qty[id] = 0;
+    newProductName.value = "";
+    newProductPrice.value = "";
+    await saveProducts();
+    renderProducts();
+    renderReceipt();
+    renderAdminList();
+  });
+
+  newProductName.addEventListener('keydown', (e) => {
+    if(e.key === 'Enter') addProductBtn.click();
+  });
+
+  newProductPrice.addEventListener('keydown', (e) => {
+    if(e.key === 'Enter') addProductBtn.click();
+  });
+
+  // ---- Cambiar contraseña ----
+  const currentPass = document.getElementById('currentPass');
+  const newPass = document.getElementById('newPass');
+  const newPass2 = document.getElementById('newPass2');
+  const changePassBtn = document.getElementById('changePassBtn');
+  const changePassMsg = document.getElementById('changePassMsg');
+
+  changePassBtn.addEventListener('click', async () => {
+    changePassMsg.className = "admin-error";
+    changePassMsg.style.color = "";
+    changePassMsg.textContent = "";
+
+    if(currentPass.value !== ADMIN_PASSWORD){
+      changePassMsg.textContent = "La contraseña actual no es correcta.";
+      return;
+    }
+    if(newPass.value.length < 4){
+      changePassMsg.textContent = "La nueva contraseña debe tener al menos 4 caracteres.";
+      return;
+    }
+    if(newPass.value !== newPass2.value){
+      changePassMsg.textContent = "Las contraseñas nuevas no coinciden.";
+      return;
+    }
+
+    ADMIN_PASSWORD = newPass.value;
+    await window.storage.set(ADMIN_PASS_KEY, ADMIN_PASSWORD, true);
+    changePassMsg.textContent = "✓ Contraseña actualizada.";
+    changePassMsg.style.color = "var(--ok)";
+    currentPass.value = "";
+    newPass.value = "";
+    newPass2.value = "";
+  });
+
+  // ---- Código QR ----
+  function renderQR(){
+    const qrContainer = document.getElementById('qrContainer');
+    qrContainer.innerHTML = '';
+    new QRCode(qrContainer, {
+      text: window.location.href,
+      width: 170,
+      height: 170,
+      colorDark: '#3B2A1D',
+      colorLight: '#FFFFFF'
+    });
+  }
+
+  sendBtn.addEventListener('click', async () => {
+    const name = document.getElementById('clientName').value.trim();
+    const chosen = PRODUCTS.filter(p => qty[p.id] > 0);
+
+    statusEl.textContent = "";
+    statusEl.className = "status";
+    fallbackLink.style.display = "none";
+
+    if(!name){
+      statusEl.textContent = "Falta el nombre de quien recibe el pedido.";
+      statusEl.className = "status err";
+      return;
+    }
+    if(chosen.length === 0){
+      statusEl.textContent = "Agrega al menos un producto.";
+      statusEl.className = "status err";
+      return;
+    }
+
+    const mensaje = buildMessage();
+    const waLink = `https://wa.me/52${CALLMEBOT_PHONE}?text=${encodeURIComponent(mensaje)}`;
+    fallbackLink.href = waLink;
+
+    sendBtn.disabled = true;
+    sendBtn.textContent = "Enviando...";
+
+    try{
+      const url = `https://api.callmebot.com/whatsapp.php?phone=${CALLMEBOT_PHONE}&text=${encodeURIComponent(mensaje)}&apikey=${CALLMEBOT_APIKEY}`;
+      await fetch(url, { mode: 'no-cors' });
+      statusEl.textContent = "✓ Pedido enviado a la panadería.";
+      statusEl.className = "status ok";
+      fallbackLink.style.display = "inline-block";
+      resetForm();
+    }catch(err){
+      statusEl.textContent = "No se pudo enviar automáticamente.";
+      statusEl.className = "status err";
+      fallbackLink.style.display = "inline-block";
+    }finally{
+      sendBtn.disabled = false;
+      sendBtn.textContent = "Enviar pedido por WhatsApp";
+    }
+  });
+
+  (async function init(){
+    productList.innerHTML = '<p class="receipt-empty">Cargando menú...</p>';
+    await Promise.all([loadProducts(), loadAdminPassword()]);
+    renderProducts();
+    renderReceipt();
+  })();
+</script>
+
+<!--
+  CÓMO CONSEGUIR EL APIKEY DE CALLMEBOT PARA EL NÚMERO 6144274449:
+  1. Desde el WhatsApp del número 6144274449, agregar como contacto a: +34 644 51 95 23
+  2. Enviarle el mensaje exacto: "I allow callmebot to send me messages"
+  3. CallMeBot responde con un APIKEY (un número).
+  4. Reemplazar "PON_AQUI_TU_APIKEY" arriba en el código con ese número.
+
+  ADMINISTRADOR DEL MENÚ:
+  El botón "Administrar menú" (hasta abajo de la página) pide una contraseña.
+  La contraseña inicial es 1234 — desde el mismo panel, en "Cambiar
+  contraseña", la puedes cambiar por la que quieras (pide la actual para
+  confirmarla). También se guarda con almacenamiento compartido.
+  Dentro del panel también aparece un código QR que lleva directo a esta
+  página, para compartir o imprimir.
+-->
+</body>
+</html>
