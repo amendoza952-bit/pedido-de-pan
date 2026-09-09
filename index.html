@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -8,6 +9,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
 <style>
   :root{
     --paper:#EFE6D3;
@@ -417,19 +420,34 @@
   const CALLMEBOT_PHONE = "6144274449";
   const CALLMEBOT_APIKEY = "PON_AQUI_TU_APIKEY";
 
-  // ---- Config: acceso de administrador ----
-  const ADMIN_PASS_KEY = "admin:password";
-  let ADMIN_PASSWORD = "1234"; // valor de respaldo hasta que cargue el guardado
+  // ---- Config: Firebase ----
+  // Esto es lo que hace que el menú y la contraseña se reflejen solos, en
+  // tiempo real, en cualquier celular que tenga la página abierta.
+  // Instrucciones para conseguir estos valores al final de este archivo (comentario).
+  const firebaseConfig = {
+    apiKey: "AIzaSyA1R3sckgjKCuVmeTgx9C-GmW88taYRiQc",
+    authDomain: "panaderia-irma.firebaseapp.com",
+    databaseURL: "https://panaderia-irma-default-rtdb.firebaseio.com",
+    projectId: "panaderia-irma",
+    storageBucket: "panaderia-irma.firebasestorage.app",
+    messagingSenderId: "922538188728",
+    appId: "1:922538188728:web:ba3896db60d55f229a394d"
+  };
 
-  async function loadAdminPassword(){
-    try{
-      const result = await window.storage.get(ADMIN_PASS_KEY, true);
-      ADMIN_PASSWORD = result.value;
-    }catch(err){
-      ADMIN_PASSWORD = "1234";
-      await window.storage.set(ADMIN_PASS_KEY, ADMIN_PASSWORD, true);
-    }
+  const firebaseReady = Object.values(firebaseConfig).every(v => typeof v === 'string' && !v.startsWith('PON_AQUI'));
+
+  let menuRef = null;
+  let passRef = null;
+
+  if(firebaseReady){
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    menuRef = db.ref('pedidosDePan/menu');
+    passRef = db.ref('pedidosDePan/adminPassword');
   }
+
+  // ---- Config: acceso de administrador ----
+  let ADMIN_PASSWORD = "1234"; // valor de respaldo mientras carga (o si Firebase no está configurado)
 
   const DEFAULT_PRODUCTS = [
     { id: "concha", name: "Concha", price: 12 },
@@ -444,26 +462,7 @@
 
   let PRODUCTS = [];
   let qty = {};
-  const MENU_KEY = "menu:productos";
-
-  async function loadProducts(){
-    try{
-      const result = await window.storage.get(MENU_KEY, true);
-      PRODUCTS = JSON.parse(result.value);
-    }catch(err){
-      PRODUCTS = DEFAULT_PRODUCTS.slice();
-      await saveProducts();
-    }
-    syncQty();
-  }
-
-  async function saveProducts(){
-    try{
-      await window.storage.set(MENU_KEY, JSON.stringify(PRODUCTS), true);
-    }catch(err){
-      console.error('No se pudo guardar el menú', err);
-    }
-  }
+  let menuLoaded = false;
 
   function syncQty(){
     const next = {};
@@ -483,6 +482,10 @@
   const fallbackLink = document.getElementById('fallbackLink');
 
   function renderProducts(){
+    if(!menuLoaded){
+      productList.innerHTML = '<p class="receipt-empty">Cargando menú...</p>';
+      return;
+    }
     productList.innerHTML = PRODUCTS.map(p => `
       <div class="product-row">
         <div class="product-info">
@@ -501,8 +504,9 @@
       btn.addEventListener('click', () => {
         const id = btn.dataset.id;
         const dir = parseInt(btn.dataset.dir);
-        qty[id] = Math.max(0, qty[id] + dir);
-        document.getElementById(`qty-${id}`).textContent = qty[id];
+        qty[id] = Math.max(0, (qty[id] || 0) + dir);
+        const qtyLabel = document.getElementById(`qty-${id}`);
+        if(qtyLabel) qtyLabel.textContent = qty[id];
         renderReceipt();
       });
     });
@@ -557,6 +561,28 @@
     renderReceipt();
     document.getElementById('clientName').value = "";
     document.getElementById('notes').value = "";
+  }
+
+  // ---- Escribir cambios en el menú: con Firebase configurado, cualquier
+  // ---- dispositivo conectado se actualiza solo; sin Firebase, solo afecta
+  // ---- a este dispositivo (no se comparte).
+  function updateProducts(newProducts){
+    if(firebaseReady){
+      menuRef.set(newProducts);
+    }else{
+      PRODUCTS = newProducts;
+      syncQty();
+      renderProducts();
+      renderReceipt();
+      if(isAdmin) renderAdminList();
+    }
+  }
+
+  function updatePassword(newValue){
+    ADMIN_PASSWORD = newValue;
+    if(firebaseReady){
+      passRef.set(newValue);
+    }
   }
 
   // ---- Panel de administrador ----
@@ -621,47 +647,33 @@
     `).join('');
 
     adminList.querySelectorAll('.admin-price-input').forEach(input => {
-      input.addEventListener('change', async () => {
+      input.addEventListener('change', () => {
         const id = input.dataset.id;
         const val = parseFloat(input.value);
-        const product = PRODUCTS.find(p => p.id === id);
-        if(product){
-          product.price = (isNaN(val) || val < 0) ? 0 : val;
-          input.value = product.price;
-          await saveProducts();
-          renderProducts();
-          renderReceipt();
-        }
+        const price = (isNaN(val) || val < 0) ? 0 : val;
+        input.value = price;
+        updateProducts(PRODUCTS.map(p => p.id === id ? { ...p, price } : p));
       });
     });
 
     adminList.querySelectorAll('.admin-remove').forEach(btn => {
-      btn.addEventListener('click', async () => {
+      btn.addEventListener('click', () => {
         const id = btn.dataset.id;
-        PRODUCTS = PRODUCTS.filter(p => p.id !== id);
         delete qty[id];
-        await saveProducts();
-        renderProducts();
-        renderReceipt();
-        renderAdminList();
+        updateProducts(PRODUCTS.filter(p => p.id !== id));
       });
     });
   }
 
-  addProductBtn.addEventListener('click', async () => {
+  addProductBtn.addEventListener('click', () => {
     const name = newProductName.value.trim();
     if(!name) return;
     const priceVal = parseFloat(newProductPrice.value);
     const price = (isNaN(priceVal) || priceVal < 0) ? 0 : priceVal;
     const id = 'p_' + Date.now();
-    PRODUCTS.push({ id, name, price });
-    qty[id] = 0;
     newProductName.value = "";
     newProductPrice.value = "";
-    await saveProducts();
-    renderProducts();
-    renderReceipt();
-    renderAdminList();
+    updateProducts([...PRODUCTS, { id, name, price }]);
   });
 
   newProductName.addEventListener('keydown', (e) => {
@@ -679,7 +691,7 @@
   const changePassBtn = document.getElementById('changePassBtn');
   const changePassMsg = document.getElementById('changePassMsg');
 
-  changePassBtn.addEventListener('click', async () => {
+  changePassBtn.addEventListener('click', () => {
     changePassMsg.className = "admin-error";
     changePassMsg.style.color = "";
     changePassMsg.textContent = "";
@@ -697,8 +709,7 @@
       return;
     }
 
-    ADMIN_PASSWORD = newPass.value;
-    await window.storage.set(ADMIN_PASS_KEY, ADMIN_PASSWORD, true);
+    updatePassword(newPass.value);
     changePassMsg.textContent = "✓ Contraseña actualizada.";
     changePassMsg.style.color = "var(--ok)";
     currentPass.value = "";
@@ -762,12 +773,43 @@
     }
   });
 
-  (async function init(){
-    productList.innerHTML = '<p class="receipt-empty">Cargando menú...</p>';
-    await Promise.all([loadProducts(), loadAdminPassword()]);
+  // ---- Arranque ----
+  // Con Firebase configurado: escucha cambios en tiempo real, así que
+  // cualquier edición del administrador (en cualquier celular) se refleja
+  // sola en todos los demás. Sin Firebase: usa el menú por default solo en
+  // este dispositivo, sin quedarse pegado esperando.
+  if(firebaseReady){
+    menuRef.on('value', (snapshot) => {
+      const val = snapshot.val();
+      if(Array.isArray(val) && val.length > 0){
+        PRODUCTS = val;
+      }else{
+        PRODUCTS = DEFAULT_PRODUCTS.slice();
+        menuRef.set(PRODUCTS);
+      }
+      menuLoaded = true;
+      syncQty();
+      renderProducts();
+      renderReceipt();
+      if(isAdmin) renderAdminList();
+    });
+
+    passRef.on('value', (snapshot) => {
+      const val = snapshot.val();
+      if(val){
+        ADMIN_PASSWORD = val;
+      }else{
+        ADMIN_PASSWORD = "1234";
+        passRef.set(ADMIN_PASSWORD);
+      }
+    });
+  }else{
+    PRODUCTS = DEFAULT_PRODUCTS.slice();
+    menuLoaded = true;
+    syncQty();
     renderProducts();
     renderReceipt();
-  })();
+  }
 </script>
 
 <!--
@@ -781,9 +823,37 @@
   El botón "Administrar menú" (hasta abajo de la página) pide una contraseña.
   La contraseña inicial es 1234 — desde el mismo panel, en "Cambiar
   contraseña", la puedes cambiar por la que quieras (pide la actual para
-  confirmarla). También se guarda con almacenamiento compartido.
+  confirmarla).
   Dentro del panel también aparece un código QR que lleva directo a esta
   página, para compartir o imprimir.
+
+  PARA QUE EL MENÚ SE COMPARTA EN TIEMPO REAL ENTRE TODOS LOS CELULARES
+  (Firebase Realtime Database, gratis):
+  1. Ve a https://console.firebase.google.com con tu cuenta de Google.
+     Puedes usar tu proyecto de Hot Wheels si quieres, o darle "Agregar
+     proyecto" y crear uno nuevo (ej. "panaderia-irma").
+  2. En el menú de la izquierda: Build > Realtime Database > Crear base
+     de datos. Elige cualquier ubicación cercana y empieza en "modo de
+     prueba".
+  3. Ve a Realtime Database > pestaña "Rules" y pon esto, luego Publish:
+     {
+       "rules": {
+         "pedidosDePan": {
+           ".read": true,
+           ".write": true
+         }
+       }
+     }
+  4. Ve al ícono de engrane > Configuración del proyecto > pestaña
+     General > baja hasta "Tus apps" > dale al ícono </> para agregar
+     una app web (no marques "Firebase Hosting", no hace falta).
+  5. Te va a mostrar un bloque "firebaseConfig" — copia cada valor
+     (apiKey, authDomain, databaseURL, projectId, storageBucket,
+     messagingSenderId, appId) y pégalos arriba en este archivo, donde
+     dice "PON_AQUI_TU_...".
+  6. Guarda y sube el archivo de nuevo. Mientras no llenes estos datos,
+     la página sigue funcionando normal, solo que sin compartir el menú
+     entre dispositivos.
 -->
 </body>
 </html>
