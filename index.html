@@ -340,32 +340,6 @@
     border:1px solid var(--line);
   }
   .qr-wrap{text-align:center;}
-  .phone-input-wrapper{
-    display:flex;
-    gap:8px;
-    margin-bottom:14px;
-    align-items:center;
-  }
-  .phone-input-wrapper label{
-    font-size:0.88rem;
-    color:var(--ink-soft);
-    margin:0;
-    white-space:nowrap;
-  }
-  .phone-input-wrapper input{
-    flex:1;
-    padding:11px 12px;
-    border-radius:8px;
-    border:1px solid var(--line);
-    background:var(--paper);
-    color:var(--ink);
-    font-family:'Inter',sans-serif;
-    font-size:0.98rem;
-  }
-  .phone-input-wrapper input:focus{
-    outline:2px solid var(--wheat);
-    outline-offset:1px;
-  }
 </style>
 </head>
 <body>
@@ -390,10 +364,6 @@
   </div>
 
   <div class="card">
-    <div class="phone-input-wrapper">
-      <label for="bakeryPhone">Enviar a:</label>
-      <input type="tel" id="bakeryPhone" placeholder="Número de WhatsApp (con código de país)">
-    </div>
     <div class="field">
       <label for="clientName">Nombre de quien recibe</label>
       <input type="text" id="clientName" placeholder="Ej. Juan Pérez">
@@ -506,10 +476,6 @@
   const sendBtn = document.getElementById('sendBtn');
   const statusEl = document.getElementById('status');
   const syncStatus = document.getElementById('syncStatus');
-  const bakeryPhoneInput = document.getElementById('bakeryPhone');
-
-  // Establecer el número por defecto
-  bakeryPhoneInput.value = BAKERY_PHONE;
 
   function renderProducts(){
     if(!menuLoaded){
@@ -760,7 +726,6 @@
   // ---- Enviar a WhatsApp directo ----
   sendBtn.addEventListener('click', () => {
     const name = document.getElementById('clientName').value.trim();
-    const phone = bakeryPhoneInput.value.trim();
     const chosen = PRODUCTS.filter(p => qty[p.id] > 0);
 
     statusEl.textContent = "";
@@ -772,12 +737,6 @@
       return;
     }
 
-    if(!phone){
-      statusEl.textContent = "Falta el número de WhatsApp de la panadería.";
-      statusEl.className = "status err";
-      return;
-    }
-
     if(chosen.length === 0){
       statusEl.textContent = "Agrega al menos un producto.";
       statusEl.className = "status err";
@@ -785,7 +744,7 @@
     }
 
     const mensaje = buildMessage();
-    const waLink = `https://wa.me/${phone}?text=${encodeURIComponent(mensaje)}`;
+    const waLink = `https://wa.me/${BAKERY_PHONE}?text=${encodeURIComponent(mensaje)}`;
     
     // Abrir WhatsApp con el mensaje armado
     window.open(waLink, '_blank');
@@ -849,7 +808,7 @@
 <!--
   CONFIGURACIÓN SIMPLIFICADA:
   
-  1. Ahora NO necesitas CallMeBot ni APIKEY
+  1. El pedido se envía directamente al número de la panadería sin necesidad de cambiarlo
   2. Solo tienes que cambiar el número en la línea donde dice:
      const BAKERY_PHONE = "526144274449";
   
@@ -859,8 +818,8 @@
      - Ejemplo: "526144274449"
   
   4. Cuando alguien haga clic en "Enviar pedido por WhatsApp":
-     - Se abre WhatsApp
-     - El mensaje ya está armado
+     - Se abre WhatsApp automáticamente
+     - El mensaje ya está armado con el nombre y notas
      - Solo toca "Enviar"
   
   Para que el menú se comparta en tiempo real (Firebase ya está configurado):
