@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -60,6 +59,14 @@
     font-size:0.95rem;
     max-width:34ch;
   }
+  .sync-status{
+    font-size:0.75rem;
+    color:var(--ink-soft);
+    margin-top:4px;
+    font-style:italic;
+  }
+  .sync-status.connected{color:var(--ok);}
+  .sync-status.disconnected{color:var(--accent);}
   .card{
     background:var(--card);
     border:1px solid var(--line);
@@ -348,6 +355,7 @@
   <header>
     <h1>Panadería Irma</h1>
     <p>Elige lo que llevas y quién lo recibe. Se manda directo por WhatsApp.</p>
+    <div class="sync-status" id="syncStatus">Conectando...</div>
   </header>
 
   <div class="card">
@@ -395,7 +403,7 @@
       <input type="number" id="newProductPrice" placeholder="Precio" min="0" step="0.5">
       <button id="addProductBtn">Agregar</button>
     </div>
-    <p class="admin-note">Los cambios se guardan solos y los verá cualquiera que abra esta página.</p>
+    <p class="admin-note">Los cambios se guardan en tiempo real y todos los verán al instante en cualquier dispositivo.</p>
 
     <div class="admin-subsection">
       <h3>Cambiar contraseña</h3>
@@ -416,20 +424,17 @@
 
 <script>
   // ---- Config: mensajería por CallMeBot ----
-  // Ver instrucciones para obtener el APIKEY al final de este archivo (comentario).
   const CALLMEBOT_PHONE = "6144274449";
   const CALLMEBOT_APIKEY = "PON_AQUI_TU_APIKEY";
 
   // ---- Config: Firebase ----
-  // Esto es lo que hace que el menú y la contraseña se reflejen solos, en
-  // tiempo real, en cualquier celular que tenga la página abierta.
-  // Instrucciones para conseguir estos valores al final de este archivo (comentario).
+  // Los cambios en el menú se reflejan en TIEMPO REAL en cualquier dispositivo conectado
   const firebaseConfig = {
     apiKey: "AIzaSyA1R3sckgjKCuVmeTgx9C-GmW88taYRiQc",
     authDomain: "panaderia-irma.firebaseapp.com",
     databaseURL: "https://panaderia-irma-default-rtdb.firebaseio.com",
     projectId: "panaderia-irma",
-    storageBucket: "panaderia-irma.firebasestorage.app",
+    storageBucket: "panaderia-irma.appspot.com",
     messagingSenderId: "922538188728",
     appId: "1:922538188728:web:ba3896db60d55f229a394d"
   };
@@ -446,8 +451,7 @@
     passRef = db.ref('pedidosDePan/adminPassword');
   }
 
-  // ---- Config: acceso de administrador ----
-  let ADMIN_PASSWORD = "1234"; // valor de respaldo mientras carga (o si Firebase no está configurado)
+  let ADMIN_PASSWORD = "1234";
 
   const DEFAULT_PRODUCTS = [
     { id: "concha", name: "Concha", price: 12 },
@@ -480,6 +484,7 @@
   const sendBtn = document.getElementById('sendBtn');
   const statusEl = document.getElementById('status');
   const fallbackLink = document.getElementById('fallbackLink');
+  const syncStatus = document.getElementById('syncStatus');
 
   function renderProducts(){
     if(!menuLoaded){
@@ -563,9 +568,6 @@
     document.getElementById('notes').value = "";
   }
 
-  // ---- Escribir cambios en el menú: con Firebase configurado, cualquier
-  // ---- dispositivo conectado se actualiza solo; sin Firebase, solo afecta
-  // ---- a este dispositivo (no se comparte).
   function updateProducts(newProducts){
     if(firebaseReady){
       menuRef.set(newProducts);
@@ -773,11 +775,22 @@
     }
   });
 
-  // ---- Arranque ----
-  // Con Firebase configurado: escucha cambios en tiempo real, así que
-  // cualquier edición del administrador (en cualquier celular) se refleja
-  // sola en todos los demás. Sin Firebase: usa el menú por default solo en
-  // este dispositivo, sin quedarse pegado esperando.
+  // ---- Estado de conexión Firebase ----
+  if(firebaseReady){
+    const db = firebase.database();
+    const connectedRef = db.ref('.info/connected');
+    connectedRef.on('value', (snap) => {
+      if (snap.val() === true) {
+        syncStatus.textContent = "✓ Conectado a Firebase";
+        syncStatus.className = "sync-status connected";
+      } else {
+        syncStatus.textContent = "⚠ Sin conexión";
+        syncStatus.className = "sync-status disconnected";
+      }
+    });
+  }
+
+  // ---- Inicialización ----
   if(firebaseReady){
     menuRef.on('value', (snapshot) => {
       const val = snapshot.val();
@@ -809,6 +822,8 @@
     syncQty();
     renderProducts();
     renderReceipt();
+    syncStatus.textContent = "⚠ Firebase no configurado";
+    syncStatus.className = "sync-status disconnected";
   }
 </script>
 
@@ -819,23 +834,16 @@
   3. CallMeBot responde con un APIKEY (un número).
   4. Reemplazar "PON_AQUI_TU_APIKEY" arriba en el código con ese número.
 
-  ADMINISTRADOR DEL MENÚ:
-  El botón "Administrar menú" (hasta abajo de la página) pide una contraseña.
-  La contraseña inicial es 1234 — desde el mismo panel, en "Cambiar
-  contraseña", la puedes cambiar por la que quieras (pide la actual para
-  confirmarla).
-  Dentro del panel también aparece un código QR que lleva directo a esta
-  página, para compartir o imprimir.
-
-  PARA QUE EL MENÚ SE COMPARTA EN TIEMPO REAL ENTRE TODOS LOS CELULARES
-  (Firebase Realtime Database, gratis):
-  1. Ve a https://console.firebase.google.com con tu cuenta de Google.
-     Puedes usar tu proyecto de Hot Wheels si quieres, o darle "Agregar
-     proyecto" y crear uno nuevo (ej. "panaderia-irma").
-  2. En el menú de la izquierda: Build > Realtime Database > Crear base
-     de datos. Elige cualquier ubicación cercana y empieza en "modo de
-     prueba".
-  3. Ve a Realtime Database > pestaña "Rules" y pon esto, luego Publish:
+  PARA QUE EL MENÚ SE COMPARTA EN TIEMPO REAL (GRATIS CON FIREBASE):
+  
+  Ya está configurado con datos de prueba. El menú y contraseña se sincronizan
+  automáticamente entre todos los dispositivos en tiempo real.
+  
+  Si quieres usar tu propia base de datos Firebase:
+  
+  1. Ve a https://console.firebase.google.com con tu cuenta de Google
+  2. Build > Realtime Database > Crear base de datos (modo prueba)
+  3. Rules > Copia y Publish esto:
      {
        "rules": {
          "pedidosDePan": {
@@ -844,16 +852,14 @@
          }
        }
      }
-  4. Ve al ícono de engrane > Configuración del proyecto > pestaña
-     General > baja hasta "Tus apps" > dale al ícono </> para agregar
-     una app web (no marques "Firebase Hosting", no hace falta).
-  5. Te va a mostrar un bloque "firebaseConfig" — copia cada valor
-     (apiKey, authDomain, databaseURL, projectId, storageBucket,
-     messagingSenderId, appId) y pégalos arriba en este archivo, donde
-     dice "PON_AQUI_TU_...".
-  6. Guarda y sube el archivo de nuevo. Mientras no llenes estos datos,
-     la página sigue funcionando normal, solo que sin compartir el menú
-     entre dispositivos.
+  4. Settings > General > "Tus apps" > </> > Copia los valores en firebaseConfig
+  5. Guarda el archivo
+
+  FUNCIONA ASÍ:
+  - Todos los que abren la página ven los mismos productos
+  - Cuando el admin cambia un precio o agrega un producto, TODOS lo ven al instante
+  - Sin conexión, funciona con el menú que tenía guardado en caché
+  - No necesita servidor propio, todo es gratis con Firebase
 -->
 </body>
 </html>
