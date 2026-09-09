@@ -446,8 +446,8 @@
 
 <script>
   // ---- Config: WhatsApp directo (sin CallMeBot) ----
-  // El número al que se envían los pedidos. Reemplaza con tu número
-  const BAKERY_PHONE = "52614427449"; // Formato: código de país + número (sin +)
+  // El número al que se envían los pedidos (con código de país)
+  const BAKERY_PHONE = "526144274449"; // Formato: código de país + número (sin +)
 
   // ---- Config: Firebase ----
   // Los cambios en el menú se reflejan en TIEMPO REAL en cualquier dispositivo conectado
@@ -851,12 +851,12 @@
   
   1. Ahora NO necesitas CallMeBot ni APIKEY
   2. Solo tienes que cambiar el número en la línea donde dice:
-     const BAKERY_PHONE = "52614427449";
+     const BAKERY_PHONE = "526144274449";
   
-  3. Reemplaza "52614427449" con tu número en este formato:
-     - Código de país (México = 52, Colombia = 57, etc.)
-     - Seguido del número SIN el +
-     - Ejemplo: "52 6144274449" → "526144274449"
+  3. El formato es: CÓDIGO DE PAÍS + 10 DÍGITOS (sin +)
+     - México = 52 + número
+     - Colombia = 57 + número
+     - Ejemplo: "526144274449"
   
   4. Cuando alguien haga clic en "Enviar pedido por WhatsApp":
      - Se abre WhatsApp
