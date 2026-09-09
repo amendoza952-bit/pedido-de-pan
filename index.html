@@ -211,13 +211,6 @@
   }
   .status.ok{color:var(--ok);}
   .status.err{color:var(--accent);}
-  .fallback{
-    display:inline-block;
-    margin-top:10px;
-    font-size:0.85rem;
-    color:var(--crust);
-    text-decoration:underline;
-  }
   .admin-toggle{
     display:block;
     text-align:center;
@@ -347,6 +340,32 @@
     border:1px solid var(--line);
   }
   .qr-wrap{text-align:center;}
+  .phone-input-wrapper{
+    display:flex;
+    gap:8px;
+    margin-bottom:14px;
+    align-items:center;
+  }
+  .phone-input-wrapper label{
+    font-size:0.88rem;
+    color:var(--ink-soft);
+    margin:0;
+    white-space:nowrap;
+  }
+  .phone-input-wrapper input{
+    flex:1;
+    padding:11px 12px;
+    border-radius:8px;
+    border:1px solid var(--line);
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    font-size:0.98rem;
+  }
+  .phone-input-wrapper input:focus{
+    outline:2px solid var(--wheat);
+    outline-offset:1px;
+  }
 </style>
 </head>
 <body>
@@ -371,6 +390,10 @@
   </div>
 
   <div class="card">
+    <div class="phone-input-wrapper">
+      <label for="bakeryPhone">Enviar a:</label>
+      <input type="tel" id="bakeryPhone" placeholder="Número de WhatsApp (con código de país)">
+    </div>
     <div class="field">
       <label for="clientName">Nombre de quien recibe</label>
       <input type="text" id="clientName" placeholder="Ej. Juan Pérez">
@@ -381,7 +404,6 @@
     </div>
     <button class="send-btn" id="sendBtn">Enviar pedido por WhatsApp</button>
     <div class="status" id="status"></div>
-    <a class="fallback" id="fallbackLink" href="#" target="_blank" style="display:none;">Si no llegó, ábrelo manualmente aquí</a>
   </div>
 
   <button class="admin-toggle" id="adminToggle">Administrar menú</button>
@@ -423,9 +445,9 @@
 </div>
 
 <script>
-  // ---- Config: mensajería por CallMeBot ----
-  const CALLMEBOT_PHONE = "6144274449";
-  const CALLMEBOT_APIKEY = "PON_AQUI_TU_APIKEY";
+  // ---- Config: WhatsApp directo (sin CallMeBot) ----
+  // El número al que se envían los pedidos. Reemplaza con tu número
+  const BAKERY_PHONE = "52614427449"; // Formato: código de país + número (sin +)
 
   // ---- Config: Firebase ----
   // Los cambios en el menú se reflejan en TIEMPO REAL en cualquier dispositivo conectado
@@ -483,8 +505,11 @@
   const receipt = document.getElementById('receipt');
   const sendBtn = document.getElementById('sendBtn');
   const statusEl = document.getElementById('status');
-  const fallbackLink = document.getElementById('fallbackLink');
   const syncStatus = document.getElementById('syncStatus');
+  const bakeryPhoneInput = document.getElementById('bakeryPhone');
+
+  // Establecer el número por defecto
+  bakeryPhoneInput.value = BAKERY_PHONE;
 
   function renderProducts(){
     if(!menuLoaded){
@@ -732,19 +757,27 @@
     });
   }
 
-  sendBtn.addEventListener('click', async () => {
+  // ---- Enviar a WhatsApp directo ----
+  sendBtn.addEventListener('click', () => {
     const name = document.getElementById('clientName').value.trim();
+    const phone = bakeryPhoneInput.value.trim();
     const chosen = PRODUCTS.filter(p => qty[p.id] > 0);
 
     statusEl.textContent = "";
     statusEl.className = "status";
-    fallbackLink.style.display = "none";
 
     if(!name){
       statusEl.textContent = "Falta el nombre de quien recibe el pedido.";
       statusEl.className = "status err";
       return;
     }
+
+    if(!phone){
+      statusEl.textContent = "Falta el número de WhatsApp de la panadería.";
+      statusEl.className = "status err";
+      return;
+    }
+
     if(chosen.length === 0){
       statusEl.textContent = "Agrega al menos un producto.";
       statusEl.className = "status err";
@@ -752,27 +785,13 @@
     }
 
     const mensaje = buildMessage();
-    const waLink = `https://wa.me/52${CALLMEBOT_PHONE}?text=${encodeURIComponent(mensaje)}`;
-    fallbackLink.href = waLink;
-
-    sendBtn.disabled = true;
-    sendBtn.textContent = "Enviando...";
-
-    try{
-      const url = `https://api.callmebot.com/whatsapp.php?phone=${CALLMEBOT_PHONE}&text=${encodeURIComponent(mensaje)}&apikey=${CALLMEBOT_APIKEY}`;
-      await fetch(url, { mode: 'no-cors' });
-      statusEl.textContent = "✓ Pedido enviado a la panadería.";
-      statusEl.className = "status ok";
-      fallbackLink.style.display = "inline-block";
-      resetForm();
-    }catch(err){
-      statusEl.textContent = "No se pudo enviar automáticamente.";
-      statusEl.className = "status err";
-      fallbackLink.style.display = "inline-block";
-    }finally{
-      sendBtn.disabled = false;
-      sendBtn.textContent = "Enviar pedido por WhatsApp";
-    }
+    const waLink = `https://wa.me/${phone}?text=${encodeURIComponent(mensaje)}`;
+    
+    // Abrir WhatsApp con el mensaje armado
+    window.open(waLink, '_blank');
+    
+    statusEl.textContent = "✓ Abierto WhatsApp. Solo tienes que tocar Enviar.";
+    statusEl.className = "status ok";
   });
 
   // ---- Estado de conexión Firebase ----
@@ -828,38 +847,26 @@
 </script>
 
 <!--
-  CÓMO CONSEGUIR EL APIKEY DE CALLMEBOT PARA EL NÚMERO 6144274449:
-  1. Desde el WhatsApp del número 6144274449, agregar como contacto a: +34 644 51 95 23
-  2. Enviarle el mensaje exacto: "I allow callmebot to send me messages"
-  3. CallMeBot responde con un APIKEY (un número).
-  4. Reemplazar "PON_AQUI_TU_APIKEY" arriba en el código con ese número.
-
-  PARA QUE EL MENÚ SE COMPARTA EN TIEMPO REAL (GRATIS CON FIREBASE):
+  CONFIGURACIÓN SIMPLIFICADA:
   
-  Ya está configurado con datos de prueba. El menú y contraseña se sincronizan
-  automáticamente entre todos los dispositivos en tiempo real.
+  1. Ahora NO necesitas CallMeBot ni APIKEY
+  2. Solo tienes que cambiar el número en la línea donde dice:
+     const BAKERY_PHONE = "52614427449";
   
-  Si quieres usar tu propia base de datos Firebase:
+  3. Reemplaza "52614427449" con tu número en este formato:
+     - Código de país (México = 52, Colombia = 57, etc.)
+     - Seguido del número SIN el +
+     - Ejemplo: "52 6144274449" → "526144274449"
   
-  1. Ve a https://console.firebase.google.com con tu cuenta de Google
-  2. Build > Realtime Database > Crear base de datos (modo prueba)
-  3. Rules > Copia y Publish esto:
-     {
-       "rules": {
-         "pedidosDePan": {
-           ".read": true,
-           ".write": true
-         }
-       }
-     }
-  4. Settings > General > "Tus apps" > </> > Copia los valores en firebaseConfig
-  5. Guarda el archivo
-
-  FUNCIONA ASÍ:
+  4. Cuando alguien haga clic en "Enviar pedido por WhatsApp":
+     - Se abre WhatsApp
+     - El mensaje ya está armado
+     - Solo toca "Enviar"
+  
+  Para que el menú se comparta en tiempo real (Firebase ya está configurado):
   - Todos los que abren la página ven los mismos productos
   - Cuando el admin cambia un precio o agrega un producto, TODOS lo ven al instante
-  - Sin conexión, funciona con el menú que tenía guardado en caché
-  - No necesita servidor propio, todo es gratis con Firebase
+  - Sin conexión, funciona con el menú guardado en caché
 -->
 </body>
 </html>
